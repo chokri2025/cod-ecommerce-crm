@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { OrderStatus } from "../src/generated/prisma/enums";
 import {
 	canTransitionOrder,
 	isDeliveredSale,
@@ -17,21 +18,21 @@ describe("order transitions", () => {
 		CANCELLED: [],
 	} as const;
 	it("checks every status pair against the explicit lifecycle", () => {
-		for (const from of Object.keys(
-			ORDER_TRANSITIONS,
-		) as (keyof typeof ORDER_TRANSITIONS)[]) {
-			for (const to of Object.keys(
-				ORDER_TRANSITIONS,
-			) as (keyof typeof ORDER_TRANSITIONS)[]) {
+		expect(Object.values(OrderStatus).sort()).toEqual(
+			Object.keys(expected).sort(),
+		);
+		expect(Object.keys(ORDER_TRANSITIONS).sort()).toEqual(
+			Object.keys(expected).sort(),
+		);
+		for (const from of Object.values(OrderStatus)) {
+			for (const to of Object.values(OrderStatus)) {
 				const allowed: readonly string[] = expected[from];
 				expect(canTransitionOrder(from, to)).toBe(allowed.includes(to));
 			}
 		}
 	});
 	it("qualifies only currently delivered orders as delivered sales", () => {
-		for (const status of Object.keys(
-			ORDER_TRANSITIONS,
-		) as (keyof typeof ORDER_TRANSITIONS)[]) {
+		for (const status of Object.values(OrderStatus)) {
 			expect(isDeliveredSale(status)).toBe(status === "DELIVERED");
 		}
 	});

@@ -63,7 +63,7 @@ export class OrdersService {
 				select: { id: true },
 			});
 			if (!contact) throw new NotFoundException("Active contact not found");
-			return tx.order.create({
+			const order = await tx.order.create({
 				data: {
 					...data,
 					subtotal,
@@ -89,6 +89,46 @@ export class OrdersService {
 							sourceAccount: data.sourceAccount,
 						},
 					},
+				},
+			});
+			return tx.order.update({
+				where: { id: order.id },
+				data: { itemsSealedAt: now },
+			});
+		});
+	}
+
+	async recoverMissingFx(orderId: string, actorId: string) {
+		if (!orderId.trim() || !actorId.trim())
+			throw new BadRequestException("Order and recovery actor are required");
+		const snapshot = await this.db.order.findUnique({ where: { id: orderId } });
+		if (!snapshot) throw new NotFoundException("Order not found");
+		if (snapshot.fxRate !== null)
+			throw new ConflictException("Order FX snapshot is already established");
+		const conversion = await convertToBase(
+			this.db,
+			snapshot.total,
+			snapshot.currency,
+			snapshot.reportingCurrency,
+		);
+		if (!conversion)
+			throw new BadRequestException("No exchange rate is available");
+		return this.db.$transaction(async (tx) => {
+			await tx.$queryRaw`SELECT id FROM "order" WHERE id = ${orderId} FOR UPDATE`;
+			const order = await tx.order.findUnique({ where: { id: orderId } });
+			if (!order) throw new NotFoundException("Order not found");
+			if (order.fxRate !== null)
+				throw new ConflictException("Order FX snapshot is already established");
+			await tx.orderFxRecovery.create({
+				data: { orderId, actorId: actorId.trim() },
+			});
+			return tx.order.update({
+				where: { id: orderId },
+				data: {
+					reportingAmount: conversion.baseAmount,
+					fxRate: conversion.fxRate,
+					fxRateAt: conversion.fxRateAt,
+					fxRateSource: conversion.origin,
 				},
 			});
 		});

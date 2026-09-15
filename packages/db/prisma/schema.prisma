@@ -977,6 +977,8 @@ model Order {
   version           Int                @default(0)
   items             OrderItem[]
   statusEvents      OrderStatusEvent[]
+  itemsSealedAt     DateTime?
+  fxRecovery        OrderFxRecovery?
 
   @@unique([sourceSystem, sourceAccount, externalOrderId])
   @@index([contactId])
@@ -985,6 +987,15 @@ model Order {
   @@index([deliveredAt])
   @@index([carrier, trackingNumber])
   @@map("order")
+}
+
+model OrderFxRecovery {
+  orderId    String   @id
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  actorId    String
+  recordedAt DateTime @default(now())
+
+  @@map("orderFxRecovery")
 }
 
 model OrderItem {
