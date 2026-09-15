@@ -20,6 +20,7 @@
 		"./images": "./src/images.ts",
 		"./idempotency": "./src/idempotency.ts",
 		"./json": "./src/json.ts",
+		"./order-status": "./src/order-status.ts",
 		"./safe-fetch": "./src/safe-fetch.ts",
 		"./settings": "./src/settings.ts",
 		"./slack-inventory": "./src/slack-inventory.ts",

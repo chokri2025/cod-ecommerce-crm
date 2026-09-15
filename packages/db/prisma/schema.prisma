@@ -26,6 +26,7 @@ model User {
   ownedCompanies Company[]           @relation("CompanyOwner")
   ownedContacts  Contact[]           @relation("ContactOwner")
   ownedDeals     Deal[]              @relation("DealOwner")
+  ownedOrders    Order[]             @relation("OrderOwner")
   activities     Activity[]          @relation("ActivityAuthor")
   mailboxSyncs   MailboxSync[]
   factDecisions  ContactFact[]       @relation("FactDecider")
@@ -385,6 +386,7 @@ model Contact {
   archivedAt     DateTime?
 
   deals           DealContact[]
+  orders          Order[]
   activities      Activity[]
   emailThreads    EmailThread[]
   calendarEvents  CalendarEvent[]
@@ -911,6 +913,126 @@ model AgentAuditEvent {
   @@index([actorUserId, emittedAt])
   @@index([type, emittedAt])
   @@map("agentAuditEvent")
+}
+
+enum OrderStatus {
+  NEW
+  CONFIRMED
+  SHIPPED
+  IN_DELIVERY
+  DELIVERED
+  REFUSED
+  RETURNED
+  CANCELLED
+}
+
+model Order {
+  id                String             @id @default(cuid())
+  orderNumber       String             @unique
+  contactId         String?
+  contact           Contact?           @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  ownerId           String?
+  owner             User?              @relation("OrderOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  status            OrderStatus        @default(NEW)
+  statusChangedAt   DateTime           @default(now())
+  currency          String
+  subtotal          Decimal            @db.Decimal(14, 2)
+  discount          Decimal            @default(0) @db.Decimal(14, 2)
+  shippingCharge    Decimal            @default(0) @db.Decimal(14, 2)
+  total             Decimal            @db.Decimal(14, 2)
+  reportingCurrency String
+  reportingAmount   Decimal?           @db.Decimal(24, 4)
+  fxRate            Decimal?           @db.Decimal(20, 10)
+  fxRateAt          DateTime?
+  fxRateSource      String?
+  recipientName     String
+  normalizedPhone   String
+  address           String
+  city              String
+  region            String?
+  country           String
+  carrier           String?
+  trackingNumber    String?
+  sourceSystem      String             @default("manual")
+  sourceAccount     String             @default("")
+  externalOrderId   String?
+  utmSource         String?
+  utmMedium         String?
+  utmCampaign       String?
+  utmContent        String?
+  utmTerm           String?
+  fbclid            String?
+  fbp               String?
+  fbc               String?
+  campaignId        String?
+  adsetId           String?
+  adId              String?
+  landingPage       String?
+  confirmedAt       DateTime?
+  shippedAt         DateTime?
+  deliveredAt       DateTime?
+  cancelledAt       DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  version           Int                @default(0)
+  items             OrderItem[]
+  statusEvents      OrderStatusEvent[]
+  itemsSealedAt     DateTime?
+  fxRecovery        OrderFxRecovery?
+
+  @@unique([sourceSystem, sourceAccount, externalOrderId])
+  @@index([contactId])
+  @@index([ownerId])
+  @@index([status, createdAt])
+  @@index([deliveredAt])
+  @@index([carrier, trackingNumber])
+  @@map("order")
+}
+
+model OrderFxRecovery {
+  orderId    String   @id
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  actorId    String
+  recordedAt DateTime @default(now())
+
+  @@map("orderFxRecovery")
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  sku         String?
+  productName String
+  variant     String?
+  quantity    Int
+  unitPrice   Decimal @db.Decimal(14, 2)
+  discount    Decimal @default(0) @db.Decimal(14, 2)
+  lineTotal   Decimal @db.Decimal(14, 2)
+
+  @@index([orderId])
+  @@map("orderItem")
+}
+
+model OrderStatusEvent {
+  id              String       @id @default(cuid())
+  orderId         String
+  order           Order        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  previousStatus  OrderStatus?
+  newStatus       OrderStatus
+  version         Int
+  occurredAt      DateTime
+  receivedAt      DateTime     @default(now())
+  actorId         String?
+  sourceSystem    String
+  sourceAccount   String       @default("")
+  reason          String?
+  externalEventId String?
+
+  @@unique([sourceSystem, sourceAccount, externalEventId])
+  @@unique([orderId, version])
+  @@index([orderId, occurredAt])
+  @@map("orderStatusEvent")
 }
 
 model Deal {
