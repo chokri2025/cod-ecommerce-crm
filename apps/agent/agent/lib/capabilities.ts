@@ -9,6 +9,8 @@ export const CONTEXT_DEV_PEOPLE = "CONTEXT_DEV_PEOPLE";
 
 export const CONTEXT_DEV_SOURCE = "Context.dev key (Settings → General)";
 
+export const ELEVENLABS_V4_TURBO = "ELEVENLABS_V4_TURBO";
+
 export type Capability = {
 	readonly id: string;
 	readonly label: string;
@@ -43,6 +45,10 @@ export function capabilitiesFrom(
 		from: id,
 		enabled: Boolean(process.env[id]?.trim()),
 	});
+	const elevenLabsConfigured = Boolean(
+		process.env.ELEVENLABS_API_KEY?.trim() &&
+			process.env.ELEVENLABS_VOICE_ID?.trim(),
+	);
 
 	return [
 		{
@@ -71,6 +77,13 @@ export function capabilitiesFrom(
 			label: "Picture storage",
 			gives:
 				"somewhere to keep a logo or a profile photo. Without it a record has no picture at all, because the URLs these sources hand back expire and are never stored as they are",
+		},
+		{
+			id: ELEVENLABS_V4_TURBO,
+			from: "ELEVENLABS_API_KEY + ELEVENLABS_VOICE_ID",
+			label: "Realtime voice",
+			gives: "Eleven v4 Turbo Text-to-Dialogue voice for Retail Mind conversations",
+			enabled: elevenLabsConfigured,
 		},
 	];
 }
