@@ -3,13 +3,19 @@ import {
 	CONTEXT_DEV,
 	CONTEXT_DEV_PEOPLE,
 	CONTEXT_DEV_SOURCE,
+	ELEVENLABS_V4_TURBO,
 	capabilitiesFrom,
 	enabled,
 	markdownFor,
 	unavailable,
 } from "../agent/lib/capabilities";
 
-const KEYS = ["PERPLEXITY_API_KEY", "BLOB_READ_WRITE_TOKEN"] as const;
+const KEYS = [
+	"PERPLEXITY_API_KEY",
+	"BLOB_READ_WRITE_TOKEN",
+	"ELEVENLABS_API_KEY",
+	"ELEVENLABS_VOICE_ID",
+] as const;
 
 const saved: Record<string, string | undefined> = {};
 
@@ -55,6 +61,13 @@ describe("capabilities", () => {
 		process.env.SOMETHING_ELSE = "x";
 		expect(await enabled("SOMETHING_ELSE")).toBe(false);
 		delete process.env.SOMETHING_ELSE;
+	});
+
+	it("requires both ElevenLabs settings", async () => {
+		process.env.ELEVENLABS_API_KEY = "key";
+		expect(await enabled(ELEVENLABS_V4_TURBO)).toBe(false);
+		process.env.ELEVENLABS_VOICE_ID = "voice";
+		expect(await enabled(ELEVENLABS_V4_TURBO)).toBe(true);
 	});
 });
 
